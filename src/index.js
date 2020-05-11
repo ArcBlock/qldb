@@ -1,5 +1,5 @@
 import { isDate, isPlainObject, isArray } from 'lodash';
-import { QLDB as ControlDriver } from 'aws-sdk';
+import AwsSDK, { QLDB as ControlDriver } from 'aws-sdk';
 import { PooledQldbDriver as SessionDriver } from 'amazon-qldb-driver-nodejs';
 import { makeReader, toBase64 } from 'ion-js';
 import { createHash } from 'crypto';
@@ -128,6 +128,12 @@ export default class QLDB {
       sessionProps: {},
       ...props,
     };
+
+    if (props.debug) {
+      AwsSDK.config.logger = console;
+    } else {
+      AwsSDK.config.logger = null;
+    }
 
     this.control = new ControlDriver({
       accessKeyId: this.props.accessKey,
