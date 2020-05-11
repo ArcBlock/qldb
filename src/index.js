@@ -1,11 +1,7 @@
-import {
-  isDate,
-  isPlainObject,
-  isArray,
-} from 'lodash';
+import { isDate, isPlainObject, isArray } from 'lodash';
 import { QLDB as ControlDriver } from 'aws-sdk';
 import { PooledQldbDriver as SessionDriver } from 'amazon-qldb-driver-nodejs';
-import { IonTypes, makeReader, toBase64 } from 'ion-js';
+import { makeReader, toBase64 } from 'ion-js';
 import { createHash } from 'crypto';
 
 const HASH_LENGTH = 32;
@@ -18,9 +14,9 @@ function parseProof(valueHolder) {
   r.next();
   r.stepIn();
 
-  proofList = proofList.replace(']', '');
-  proofList = proofList.replace('[', '');
-  const array = proofList.split(',');
+  proofList = proofList.replace("]", "");
+  proofList = proofList.replace("[", "");
+  const array = proofList.split(",");
 
   const byteArray = [];
   for (let i = 0; i < array.length; i++) {
@@ -32,10 +28,10 @@ function parseProof(valueHolder) {
 
 function compareHashValues(hash1, hash2) {
   if (hash1.length !== HASH_LENGTH || hash2.length !== HASH_LENGTH) {
-    throw new Error('Invalid hash.');
+    throw new Error("Invalid hash.");
   }
   for (let i = hash1.length - 1; i >= 0; i--) {
-    const difference = (hash1[i]<<24 >>24) - (hash2[i]<<24 >>24);
+    const difference = ((hash1[i] << 24) >> 24) - ((hash2[i] << 24) >> 24);
     if (difference !== 0) {
       return difference;
     }
@@ -74,7 +70,7 @@ function joinHashesPairwise(h1, h2) {
   } else {
     concat = concatenate(h2, h1);
   }
-  const hash = createHash('sha256');
+  const hash = createHash("sha256");
   hash.update(concat);
   const newDigest = hash.digest();
   return newDigest;
@@ -97,7 +93,6 @@ export function compare(documentHash, digest, proof) {
   return toBase64(digest) === toBase64(candidateDigest);
 }
 
-
 export function ionize(entity) {
   let string = '';
   if (isPlainObject(entity)) {
@@ -109,14 +104,14 @@ export function ionize(entity) {
       } else if (isArray(value)) {
         string += `'${key}':[${value.map(v => ionize(v)).join(',')}],`;
       } else {
-        string += `'${key}':${JSON.stringify(value).replace(/"/ig, "'")},`;
+        string += `'${key}':${JSON.stringify(value).replace(/"/gi, "'")},`;
       }
     });
     string = `{${string.slice(0, -1)}}`;
   } else if (isArray(entity)) {
     string = `<<${entity.map(e => ionize(e)).join(',')}>>`;
   } else {
-    string = JSON.stringify(entity).replace(/"/ig, "'");
+    string = JSON.stringify(entity).replace(/"/gi, "'");
   }
   return string;
 }
@@ -223,87 +218,34 @@ export default class QLDB {
   }
 
   async session() {
-    if (!this.sessionDriver) throw new Error('The driver is not connected to a ledger! Use .connect(ledgerName) before running queries');
+    if (!this.sessionDriver) {
+      throw new Error(
+        'The driver is not connected to a ledger! Use .connect(ledgerName) before running queries',
+      );
+    }
 
     return this.sessionDriver.getSession();
   }
 
+  // eslint-disable-next-line class-methods-use-this
   async execute(query, ops = {}) {
     const { noParse = false, txn } = ops;
 
-    let binaryResult;
-    if (txn) {
-      binaryResult = await txn.executeInline(query);
-    } else {
-      const session = await this.session();
-      binaryResult = await session.executeStatement(query);
-    }
-
+    const binaryResult = await txn.execute(query);
     const resultList = binaryResult.getResultList();
 
     if (noParse) return resultList;
 
-    return this.parse(resultList);
+    return JSON.parse(JSON.stringify(resultList));
   }
 
   async transaction(fn = () => {}) {
-    const session = await this.session();
-    return session.executeLambda(txn => fn({
-      txn,
-      execute: (query, ops) => this.execute(query, { ...ops, txn }),
-    }));
-  }
-
-  parse(ions) {
-    return ions.map(this.parseIon);
-  }
-
-  parseIon = (ion) => {
-    if (ion.type() === null) {
-      ion.next();
-    }
-
-    if (ion.type() === IonTypes.LIST) {
-      const list = [];
-      ion.stepIn();
-      while (ion.next() != null) {
-        const itemInList = this.parseIon(ion);
-        list.push(itemInList);
-      }
-
-      return list;
-    }
-
-    if (ion.type() === IonTypes.STRUCT) {
-      const structToReturn = {};
-
-      let type;
-      const currentDepth = ion.depth();
-      ion.stepIn();
-      while (ion.depth() > currentDepth) {
-        type = ion.next();
-        if (type === null) {
-          ion.stepOut();
-        } else {
-          structToReturn[ion.fieldName()] = this.parseIon(ion);
-        }
-      }
-      return structToReturn;
-    }
-
-    if (ion.type().isNumeric) {
-      return ion.numberValue();
-    }
-
-    if (ion.type() === IonTypes.DECIMAL) {
-      return ion.value().numberValue();
-    }
-
-    if (ion.type() === IonTypes.TIMESTAMP) {
-      return ion.value().toString();
-    }
-
-    return ion.value();
+    return this.sessionDriver.executeLambda(async (txn) => {
+      await fn({
+        txn,
+        execute: (query, ops) => this.execute(query, { ...ops, txn }),
+      });
+    });
   }
 
   async validate(query) {

@@ -7,15 +7,16 @@
     "url": "https://github.com/lepozepo/qldb"
   },
   "dependencies": {
-    "amazon-qldb-driver-nodejs": "^0.1.1-preview.2",
-    "aws-sdk": "^2.572.0",
+    "amazon-qldb-driver-nodejs": "^1.0.0-rc.1",
+    "aws-sdk": "^2.673.0",
     "crypto": "^1.0.1",
-    "ion-js": "^3.1.2",
+    "ion-js": "^4.0.0",
+    "jsbi": "^3.1.2",
     "lodash": "^4.17.15"
   },
   "scripts": {
-    "pack:build": "pack build",
-    "pack:publish": "pack publish",
+    "pack:build": "pika build",
+    "pack:publish": "pika publish",
     "test": "npx npm-run-all --parallel test:*",
     "test:lint": "eslint ./src --quiet -c ./.eslintrc.js",
     "test:unit": "jest --ci",
