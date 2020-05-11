@@ -1,5 +1,8 @@
 {
-  "name": "qldb",
+  "name": "@ocap/qldb",
+  "publishConfig": {
+    "access": "public"
+  },
   "version": "3.1.2",
   "license": "MIT",
   "repository": {
