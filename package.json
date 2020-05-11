@@ -12,7 +12,6 @@
   "dependencies": {
     "amazon-qldb-driver-nodejs": "^1.0.0-rc.1",
     "aws-sdk": "^2.673.0",
-    "crypto": "^1.0.1",
     "ion-js": "^4.0.0",
     "jsbi": "^3.1.2",
     "lodash": "^4.17.15"
